@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <style>
+      body {
+        margin: 0;
+      }
+    </style>
+    <title>three.jsのサンプル</title>
+  </head>
+  <body>
+    <div id="output"></div>
+    <script type="module">
+      //import * as THREE from "https://unpkg.com/three/build/three.module.js";
+      import * as THREE from "./js/three.module.js";
+      import { TrackballControls } from "./js/TrackballControls.js";
+
+      /* global THREE */
+      let container;
+      let camera, controls, light, scene, renderer;
+      let mesh;
+      let texture = new THREE.TextureLoader().load("images/like.png");
+
+      let hi = new Array();
+      init();
+      animate();
+
+      function init() {
+        // (1) シーンの作成 （変更しない）
+        scene = new THREE.Scene();
+
+        // (2) カメラの作成 （変更しない）
+        camera = new THREE.PerspectiveCamera(
+          60,
+          window.innerWidth / window.innerHeight,
+          1,
+          10000
+        );
+        camera.position.x = 0;
+        camera.position.y = 500;
+        camera.position.z = 1000;
+
+        // (4) ライティング　平行光線＋環境光（変更しない）
+        light = new THREE.DirectionalLight(0xffffff);
+        light.position.set(300, 200, 200);
+        light.castShadow = true;
+        light.shadow.camera.top = 1024;
+        light.shadow.camera.bottom = -1024;
+        light.shadow.camera.left = -1024;
+        light.shadow.camera.right = 1024;
+        light.shadow.camera.near = 0;
+        light.shadow.camera.far = 1024;
+        scene.add(light);
+
+        light = new THREE.AmbientLight();
+        scene.add(light);
+
+        // (5)表示する物体の作成
+        let geometry, material;
+
+        geometry = new THREE.BoxGeometry(10, 600, 10);
+        material = new THREE.MeshLambertMaterial({
+          color: 0xdd11ee
+          //specular: 0xcccccc,
+          //emissive: 0xff00ff,
+          //map: texture
+        });
+        mesh = new THREE.Mesh(geometry, material);
+        mesh.position.x = 0;
+        mesh.position.y = 500;
+        mesh.position.z = 0;
+        mesh.receiveShadow = true;
+        mesh.castShadow = true;
+        scene.add(mesh);
+        // 球体（上）
+        geometry = new THREE.SphereGeometry(50, 32, 32);
+        material = new THREE.MeshPhongMaterial({
+          map: texture
+        });
+
+        mesh = new THREE.Mesh(geometry, material);
+        mesh.position.x = 0;
+        mesh.position.y = 0;
+        mesh.position.z = 0;
+        mesh.castShadow = true;
+        mesh.rotation.y = -Math.PI / 2;
+        //hi = mesh;
+        //scene.add(mesh);
+
+        // 立体（下）
+        geometry = new THREE.BoxGeometry(20, 20, 20);
+        material = new THREE.MeshBasicMaterial({
+          color: Math.random() * 0xfdca5d,
+          transparent: true, // 透明の表示許可
+          blending: THREE.AdditiveBlending, // ブレンドモード
+          side: THREE.DoubleSide, // 表裏の表示設定
+          depthWrite: false, // デプスバッファへの書き込み可否
+          //specular: 0xcccccc,
+          emissive: Math.random()
+          //map: texture
+        });
+        for (let i = 0; i < 1000; i++) {
+          mesh = new THREE.Mesh(geometry, material);
+          mesh.position.x = Math.random() * 1000 - 500;
+          mesh.position.y = Math.random() * 1000 - 500;
+          mesh.position.z = Math.random() * 1000 - 500;
+          mesh.receiveShadow = true;
+          mesh.castShadow = true;
+          hi[i] = mesh;
+          if (
+            Math.sqrt(
+              mesh.position.x * mesh.position.x +
+                mesh.position.y * mesh.position.y +
+                mesh.position.z * mesh.position.z
+            ) < 500
+          ) {
+            scene.add(hi[i]);
+          }
+        }
+        //scene.add(mesh);
+
+        // 影の有効化
+        mesh.receiveShadow = true;
+        mesh.rotation.x = -Math.PI / 2;
+        // シーンオブジェクトに追加
+        scene.add(mesh);
+
+        let axesHelper = new THREE.AxesHelper(1000);
+        scene.add(axesHelper);
+
+        // scene.fog = new THREE.FogExp2( 0xcccccc, 0.001 );
+
+        // (6)レンダリング （変更しない）
+        renderer = new THREE.WebGLRenderer({ antialias: false });
+
+        //影の有効化（レンダラー）
+        renderer.shadowMap.enabled = true;
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor("#222222", 1);
+
+        container = document.getElementById("output");
+        container.appendChild(renderer.domElement);
+
+        // カメラをトラックボールで動かす （変更しない）
+        controls = new TrackballControls(camera, renderer.domElement);
+        controls.addEventListener("change", render);
+        controls.rotateSpeed = 1.0;
+        controls.zoomSpeed = 1.2;
+        controls.panSpeed = 0.8;
+
+        window.addEventListener("resize", onWindowResize, false);
+      }
+
+      // ウインドウサイズを変えたときのアクション（変更しない）
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        controls.handleResize();
+        render();
+      }
+
+      // アニメーションの実行（無限ループ）
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+
+        for (let i = 0; i < 500; i++) {
+          hi[i].position.y--;
+          //hi[i].opacity -= 0.1;
+          if (hi[i].position.y <= -400) {
+            hi[i].position.y = 400;
+          }
+        }
+        render();
+      }
+
+      function render() {
+        renderer.render(scene, camera);
+      }
+    </script>
+  </body>
+</html>
